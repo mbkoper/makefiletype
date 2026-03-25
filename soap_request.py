@@ -215,9 +215,7 @@ def send_soap_request(
         raise RuntimeError(f"SOAP request failed: {e}") from e
 
     print(f"Status: {response.status_code}")
-    print("Response:")
-    print(response.text)
-    return response
+    return extract_doc_id(response.text)
 
 
 if __name__ == "__main__":
@@ -233,4 +231,5 @@ if __name__ == "__main__":
         if len(sys.argv) > i:
             kwargs[name] = sys.argv[i]
 
-    send_soap_request(sys.argv[1], **kwargs)
+    doc_id = send_soap_request(sys.argv[1], **kwargs)
+    print(f"{doc_id}")
