@@ -1,5 +1,6 @@
 import argparse
 import io
+import math
 import os
 import random
 import string
@@ -46,16 +47,21 @@ def generate_pdf(target_size: int) -> bytes:
 def generate_tiff(target_size: int) -> bytes:
     from PIL import Image
 
-    img = Image.frombytes("RGB", (64, 64), os.urandom(64 * 64 * 3))
-    buf = io.BytesIO()
-    img.save(buf, format="TIFF")
-    tiff_data = buf.getvalue()
-
-    if len(tiff_data) > target_size:
-        raise ValueError(
-            f"Target size {target_size} is too small for a valid TIFF "
-            f"(minimum ~{len(tiff_data)} bytes)."
-        )
+    # Scale image dimensions with target size; TIFF is uncompressed (~3 bytes/pixel).
+    side = max(8, int(math.sqrt(target_size / 3)))
+    while True:
+        img = Image.frombytes("RGB", (side, side), os.urandom(side * side * 3))
+        buf = io.BytesIO()
+        img.save(buf, format="TIFF")
+        tiff_data = buf.getvalue()
+        if len(tiff_data) <= target_size:
+            break
+        if side <= 8:
+            raise ValueError(
+                f"Target size {target_size} is too small for a valid TIFF "
+                f"(minimum ~{len(tiff_data)} bytes)."
+            )
+        side = max(8, side - max(1, side // 10))
 
     shortfall = target_size - len(tiff_data)
     return tiff_data + os.urandom(shortfall)
@@ -64,16 +70,22 @@ def generate_tiff(target_size: int) -> bytes:
 def generate_jpg(target_size: int) -> bytes:
     from PIL import Image
 
-    img = Image.frombytes("RGB", (64, 64), os.urandom(64 * 64 * 3))
-    buf = io.BytesIO()
-    img.save(buf, format="JPEG", quality=85)
-    jpg_data = buf.getvalue()
-
-    if len(jpg_data) > target_size:
-        raise ValueError(
-            f"Target size {target_size} is too small for a valid JPEG "
-            f"(minimum ~{len(jpg_data)} bytes)."
-        )
+    # Scale image dimensions with target size; random-noise JPEG at quality=85
+    # compresses poorly, so estimate ~5 bytes/pixel and iterate down if needed.
+    side = max(8, int(math.sqrt(target_size / 5)))
+    while True:
+        img = Image.frombytes("RGB", (side, side), os.urandom(side * side * 3))
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG", quality=85)
+        jpg_data = buf.getvalue()
+        if len(jpg_data) <= target_size:
+            break
+        if side <= 8:
+            raise ValueError(
+                f"Target size {target_size} is too small for a valid JPEG "
+                f"(minimum ~{len(jpg_data)} bytes)."
+            )
+        side = max(8, side - max(1, side // 10))
 
     # Append padding after the EOI marker (0xFFD9)
     shortfall = target_size - len(jpg_data)
