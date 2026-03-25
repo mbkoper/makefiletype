@@ -94,15 +94,77 @@ doc_id = extract_doc_id(response.text)
 
 ### `run_matrix.py`
 
-Iterates over a 24-row test matrix covering all combinations of
-`Wetscluster × Mediumkanaal × Mimetype × Richting × Scanlocatie × Taalcodes × Regeling × Grootte`,
-generates each test file on the fly, sends it via `soap_request.py`, and
-collects all returned document IDs.
+Iterates over a test matrix loaded from a CSV file, generates each test file
+on the fly, sends it via `soap_request.py`, and collects all returned document
+IDs.
 
 **Usage**
 
 ```bash
-python run_matrix.py
+python run_matrix.py [--csv <path>] [--output <path>]
+```
+
+| Argument | Description |
+|----------|-------------|
+| `--csv` / `-c` | Path to the matrix CSV file (default: `matrix.csv`) |
+| `--output` / `-o` | Path for the JSON output file (default: `doc_ids.json`) |
+
+**Examples**
+
+```bash
+python run_matrix.py                          # uses matrix.csv
+python run_matrix.py --csv my_matrix.csv
+python run_matrix.py --csv my_matrix.csv --output results.json
+```
+
+**CSV format**
+
+The CSV must have a header row with the following columns (case-insensitive,
+comma- or tab-delimited). Columns may appear in any order.
+
+```
+Wetscluster,Mediumkanaal,Mimetype,Richting,Scanlocatie,Taalcodes,Regeling,Grootte
+```
+
+| Column | Accepted values |
+|--------|----------------|
+| `Wetscluster` | `AA`, `KW`, `TP`, `VV`, … |
+| `Mediumkanaal` | `D`, `F`, `H`, `O`, `I`, `P` |
+| `Mimetype` | `pdf`, `tiff`, `jpeg`, `text`, `html`, `xml` |
+| `Richting` | `I` (inkomend), `U` (uitgaand), `N` (neutraal) |
+| `Scanlocatie` | `CP`, `ZS`, `AG`, `AV`, … |
+| `Taalcodes` | `D`, `E`, `F`, `I`, `M`, `N`, `P`, `Q`, `S`, `T`, `X` |
+| `Regeling` | Single or comma-separated codes, e.g. `P01` or `P01, P02, P04` |
+| `Grootte` | Size with suffix: `5k`, `250k`, `5000k`, … |
+
+**Sample CSV (`matrix.csv`)**
+
+```csv
+Wetscluster,Mediumkanaal,Mimetype,Richting,Scanlocatie,Taalcodes,Regeling,Grootte
+AA,D,pdf,I,CP,D,"P01, P02, P04",5k
+AA,F,tiff,U,ZS,E,"P05, P06",250k
+AA,H,jpeg,N,AG,F,"E05, E06",5000k
+AA,O,text,I,AV,I,"P07, P08",25k
+AA,I,html,U,CP,M,"E01, E04",500k
+AA,P,xml,N,ZS,N,P07,10000k
+KW,D,tiff,U,AG,P,P13,50000k
+KW,F,jpeg,I,AV,Q,P13,2500k
+KW,H,text,N,CP,S,P13,100k
+KW,O,html,U,ZS,T,P13,25000k
+KW,I,xml,I,AG,X,P13,1000k
+KW,P,pdf,N,AV,D,P13,50k
+TP,D,jpeg,N,CP,E,"P09, P10, P11",5k
+TP,F,text,I,ZS,F,"P12, P99",250k
+TP,H,html,U,AG,I,E01,5000k
+TP,O,xml,N,AV,M,P05,25k
+TP,I,pdf,I,CP,N,"E05, E07",500k
+TP,P,tiff,U,ZS,P,"P01, P04, P07",10000k
+VV,D,text,I,AG,Q,E50,50000k
+VV,F,html,N,AV,S,E50,2500k
+VV,H,xml,U,CP,T,E50,100k
+VV,O,pdf,I,ZS,X,E50,25000k
+VV,I,tiff,N,AG,D,E50,1000k
+VV,P,jpeg,U,AV,E,E50,50k
 ```
 
 **Output**

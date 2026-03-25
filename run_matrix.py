@@ -9,7 +9,19 @@ For each row the script:
 
 Usage
 -----
-    python run_matrix.py
+    python run_matrix.py [--csv <path>] [--output <path>]
+
+    When --csv is omitted the script falls back to ``matrix.csv`` in the
+    same directory, which contains the default 24-row test matrix.
+
+CSV format
+----------
+The CSV file must have a header row with (case-insensitive) column names:
+
+    Wetscluster,Mediumkanaal,Mimetype,Richting,Scanlocatie,Taalcodes,Regeling,Grootte
+
+Columns may appear in any order.  The delimiter is auto-detected (comma or
+tab).  Rows that are completely empty are silently skipped.
 
 Environment variables required (same as soap_request.py):
     SOAP_USERNAME   – SOAP service username
@@ -17,53 +29,27 @@ Environment variables required (same as soap_request.py):
 
 Output
 ------
-    doc_ids.json    – JSON array of objects, one per matrix row, containing
-                      the row metadata and the returned doc ID (or null when
-                      the request failed or no ID could be extracted).
+    doc_ids.json (default) – JSON array of objects, one per matrix row,
+    containing the row metadata and the returned doc ID (or null when the
+    request failed or no ID could be extracted).
 """
 
+import argparse
+import csv
 import json
 import os
+import sys
 import tempfile
 
 from makefiletype import GENERATORS, parse_size
 from soap_request import extract_doc_id, send_soap_request
 
-# ---------------------------------------------------------------------------
-# Test matrix
-# Columns: wetscluster, mediumkanaal, mimetype, richting, scanlocatie,
-#          taalcodes, regeling, size
-# ---------------------------------------------------------------------------
-MATRIX = [
-    # Wetscluster AA
-    ("AA", "D", "pdf",  "I", "CP", "D", "P01, P02, P04", "5k"),
-    ("AA", "F", "tiff", "U", "ZS", "E", "P05, P06",      "250k"),
-    ("AA", "H", "jpeg", "N", "AG", "F", "E05, E06",      "5000k"),
-    ("AA", "O", "text", "I", "AV", "I", "P07, P08",      "25k"),
-    ("AA", "I", "html", "U", "CP", "M", "E01, E04",      "500k"),
-    ("AA", "P", "xml",  "N", "ZS", "N", "P07",           "10000k"),
-    # Wetscluster KW
-    ("KW", "D", "tiff", "U", "AG", "P", "P13",           "50000k"),
-    ("KW", "F", "jpeg", "I", "AV", "Q", "P13",           "2500k"),
-    ("KW", "H", "text", "N", "CP", "S", "P13",           "100k"),
-    ("KW", "O", "html", "U", "ZS", "T", "P13",           "25000k"),
-    ("KW", "I", "xml",  "I", "AG", "X", "P13",           "1000k"),
-    ("KW", "P", "pdf",  "N", "AV", "D", "P13",           "50k"),
-    # Wetscluster TP
-    ("TP", "D", "jpeg", "N", "CP", "E", "P09, P10, P11", "5k"),
-    ("TP", "F", "text", "I", "ZS", "F", "P12, P99",      "250k"),
-    ("TP", "H", "html", "U", "AG", "I", "E01",           "5000k"),
-    ("TP", "O", "xml",  "N", "AV", "M", "P05",           "25k"),
-    ("TP", "I", "pdf",  "I", "CP", "N", "E05, E07",      "500k"),
-    ("TP", "P", "tiff", "U", "ZS", "P", "P01, P04, P07", "10000k"),
-    # Wetscluster VV
-    ("VV", "D", "text", "I", "AG", "Q", "E50",           "50000k"),
-    ("VV", "F", "html", "N", "AV", "S", "E50",           "2500k"),
-    ("VV", "H", "xml",  "U", "CP", "T", "E50",           "100k"),
-    ("VV", "O", "pdf",  "I", "ZS", "X", "E50",           "25000k"),
-    ("VV", "I", "tiff", "N", "AG", "D", "E50",           "1000k"),
-    ("VV", "P", "jpeg", "U", "AV", "E", "E50",           "50k"),
-]
+# Default CSV shipped with the project
+_DEFAULT_CSV = os.path.join(os.path.dirname(__file__), "matrix.csv")
+
+# Required CSV column names (case-insensitive)
+_REQUIRED_COLUMNS = {"wetscluster", "mediumkanaal", "mimetype", "richting",
+                     "scanlocatie", "taalcodes", "regeling", "grootte"}
 
 # Map matrix mimetype names to makefiletype generator keys and file extensions
 _TYPE_MAP = {
@@ -76,16 +62,73 @@ _TYPE_MAP = {
 }
 
 
-def run_matrix() -> list[dict]:
+def load_csv(path: str) -> list[dict]:
+    """Read the matrix CSV and return a list of row dicts with lower-case keys."""
+    with open(path, newline="", encoding="utf-8-sig") as fh:
+        # Sniff delimiter (comma or tab)
+        sample = fh.read(4096)
+        fh.seek(0)
+        try:
+            dialect = csv.Sniffer().sniff(sample, delimiters=",\t")
+        except csv.Error:
+            dialect = csv.excel  # fall back to comma
+
+        reader = csv.DictReader(fh, dialect=dialect)
+        if reader.fieldnames is None:
+            raise ValueError(f"CSV file appears to be empty: {path}")
+
+        # Normalise header names to lower-case
+        reader.fieldnames = [name.strip().lower() for name in reader.fieldnames]
+
+        missing = _REQUIRED_COLUMNS - set(reader.fieldnames)
+        if missing:
+            raise ValueError(
+                f"CSV is missing required column(s): {', '.join(sorted(missing))}"
+            )
+
+        rows = []
+        for raw in reader:
+            # Skip blank rows
+            if not any(v and v.strip() for v in raw.values()):
+                continue
+            rows.append({k.strip().lower(): (v or "").strip() for k, v in raw.items()})
+
+    if not rows:
+        raise ValueError(f"CSV file contains no data rows: {path}")
+
+    return rows
+
+
+def run_matrix(rows: list[dict]) -> list[dict]:
     results = []
 
-    for idx, row in enumerate(MATRIX, start=1):
-        wetscluster, mediumkanaal, mime_name, richting, scanlocatie, taalcodes, regeling, size_str = row
+    for idx, row in enumerate(rows, start=1):
+        wetscluster = row["wetscluster"]
+        mediumkanaal = row["mediumkanaal"]
+        mime_name    = row["mimetype"].lower()
+        richting     = row["richting"]
+        scanlocatie  = row["scanlocatie"]
+        taalcodes    = row["taalcodes"]
+        regeling     = row["regeling"]
+        size_str     = row["grootte"]
+
+        if mime_name not in _TYPE_MAP:
+            msg = f"Unknown mimetype '{mime_name}'; supported: {', '.join(_TYPE_MAP)}"
+            print(f"\n[{idx}/{len(rows)}] SKIP – {msg}")
+            results.append(_build_result(row, doc_id=None, error=msg))
+            continue
 
         gen_key, ext = _TYPE_MAP[mime_name]
-        target_size = parse_size(size_str)
 
-        print(f"\n[{idx}/{len(MATRIX)}] {wetscluster} | {mediumkanaal} | {mime_name} | "
+        try:
+            target_size = parse_size(size_str)
+        except Exception as exc:
+            msg = f"Invalid size '{size_str}': {exc}"
+            print(f"\n[{idx}/{len(rows)}] SKIP – {msg}")
+            results.append(_build_result(row, doc_id=None, error=msg))
+            continue
+
+        print(f"\n[{idx}/{len(rows)}] {wetscluster} | {mediumkanaal} | {mime_name} | "
               f"{richting} | {scanlocatie} | {taalcodes} | {regeling} | {size_str}")
 
         # Generate the file content
@@ -132,18 +175,17 @@ def run_matrix() -> list[dict]:
     return results
 
 
-def _build_result(row: tuple, *, doc_id: str | None, error: str | None = None) -> dict:
-    wetscluster, mediumkanaal, mimetype, richting, scanlocatie, taalcodes, regeling, size = row
+def _build_result(row: dict, *, doc_id: str | None, error: str | None = None) -> dict:
     entry = {
-        "wetscluster": wetscluster,
-        "mediumkanaal": mediumkanaal,
-        "mimetype": mimetype,
-        "richting": richting,
-        "scanlocatie": scanlocatie,
-        "taalcodes": taalcodes,
-        "regeling": regeling,
-        "grootte": size,
-        "doc_id": doc_id,
+        "wetscluster": row.get("wetscluster", ""),
+        "mediumkanaal": row.get("mediumkanaal", ""),
+        "mimetype":     row.get("mimetype", ""),
+        "richting":     row.get("richting", ""),
+        "scanlocatie":  row.get("scanlocatie", ""),
+        "taalcodes":    row.get("taalcodes", ""),
+        "regeling":     row.get("regeling", ""),
+        "grootte":      row.get("grootte", ""),
+        "doc_id":       doc_id,
     }
     if error:
         entry["error"] = error
@@ -151,13 +193,37 @@ def _build_result(row: tuple, *, doc_id: str | None, error: str | None = None) -
 
 
 if __name__ == "__main__":
-    results = run_matrix()
+    parser = argparse.ArgumentParser(
+        description="Run SOAP requests for every row in a matrix CSV file."
+    )
+    parser.add_argument(
+        "--csv", "-c",
+        default=_DEFAULT_CSV,
+        metavar="FILE",
+        help=f"Path to the matrix CSV file (default: matrix.csv)",
+    )
+    parser.add_argument(
+        "--output", "-o",
+        default="doc_ids.json",
+        metavar="FILE",
+        help="Path for the JSON output file (default: doc_ids.json)",
+    )
+    args = parser.parse_args()
 
-    output_file = "doc_ids.json"
-    with open(output_file, "w", encoding="utf-8") as f:
+    try:
+        rows = load_csv(args.csv)
+    except (OSError, ValueError) as exc:
+        print(f"Error reading CSV: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    print(f"Loaded {len(rows)} row(s) from {args.csv}")
+
+    results = run_matrix(rows)
+
+    with open(args.output, "w", encoding="utf-8") as f:
         json.dump(results, f, indent=2, ensure_ascii=False)
 
     total = len(results)
     ok = sum(1 for r in results if r["doc_id"] is not None)
     print(f"\nDone. {ok}/{total} requests succeeded.")
-    print(f"Doc IDs written to {output_file}")
+    print(f"Doc IDs written to {args.output}")
