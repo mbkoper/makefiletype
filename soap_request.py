@@ -2,7 +2,6 @@ import base64
 import os
 import re
 import sys
-import xml.etree.ElementTree as ET
 
 import requests
 from dotenv import load_dotenv
@@ -104,37 +103,12 @@ def build_soap_body(
 
 
 def extract_doc_id(response_text: str) -> str | None:
-    """Extract the document ID from a successful SOAP response.
-
-    Tries several common element names used by DMS services.
-    Returns the doc ID string, or None if not found.
-    """
-    candidate_tags = [
-        "documentId",
-        "docId",
-        "id",
-        "documentIdentifier",
-        "registratieKenmerk",
-        "kenmerk",
-    ]
-    try:
-        # Strip SOAP envelope namespaces for easier parsing
-        clean = re.sub(r' xmlns[^"]*"[^"]*"', "", response_text)
-        root = ET.fromstring(clean)
-        for elem in root.iter():
-            local = elem.tag.split("}")[-1] if "}" in elem.tag else elem.tag
-            if local in candidate_tags and elem.text and elem.text.strip():
-                return elem.text.strip()
-    except ET.ParseError:
-        pass
-
-    # Fallback: regex search for any of the candidate tags
-    for tag in candidate_tags:
-        match = re.search(rf"<(?:[^:>]+:)?{tag}[^>]*>([^<]+)<", response_text)
-        if match:
-            return match.group(1).strip()
-
-    return None
+    """Extract the document ID from a successful SOAP response."""
+    match = re.search(
+        r"<(?:[^:>]+:)?(?:documentId|docId|id|documentIdentifier|registratieKenmerk|kenmerk)[^>]*>([^<]+)<",
+        response_text,
+    )
+    return match.group(1).strip() if match else None
 
 
 def send_soap_request(
