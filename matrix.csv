@@ -1,0 +1,25 @@
+Wetscluster,Mediumkanaal,Mimetype,Richting,Scanlocatie,Taalcodes,Regeling,Grootte
+AA,D,pdf,I,CP,D,"P01, P02, P04",5k
+AA,F,tiff,U,ZS,E,"P05, P06",250k
+AA,H,jpeg,N,AG,F,"E05, E06",5000k
+AA,O,text,I,AV,I,"P07, P08",25k
+AA,I,html,U,CP,M,"E01, E04",500k
+AA,P,xml,N,ZS,N,P07,10000k
+KW,D,tiff,U,AG,P,P13,50000k
+KW,F,jpeg,I,AV,Q,P13,2500k
+KW,H,text,N,CP,S,P13,100k
+KW,O,html,U,ZS,T,P13,25000k
+KW,I,xml,I,AG,X,P13,1000k
+KW,P,pdf,N,AV,D,P13,50k
+TP,D,jpeg,N,CP,E,"P09, P10, P11",5k
+TP,F,text,I,ZS,F,"P12, P99",250k
+TP,H,html,U,AG,I,E01,5000k
+TP,O,xml,N,AV,M,P05,25k
+TP,I,pdf,I,CP,N,"E05, E07",500k
+TP,P,tiff,U,ZS,P,"P01, P04, P07",10000k
+VV,D,text,I,AG,Q,E50,50000k
+VV,F,html,N,AV,S,E50,2500k
+VV,H,xml,U,CP,T,E50,100k
+VV,O,pdf,I,ZS,X,E50,25000k
+VV,I,tiff,N,AG,D,E50,1000k
+VV,P,jpeg,U,AV,E,E50,50k
