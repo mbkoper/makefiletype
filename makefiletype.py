@@ -46,11 +46,7 @@ def generate_pdf(target_size: int) -> bytes:
 def generate_tiff(target_size: int) -> bytes:
     from PIL import Image
 
-    img = Image.new("RGB", (64, 64), color=(
-        random.randint(0, 255),
-        random.randint(0, 255),
-        random.randint(0, 255),
-    ))
+    img = Image.frombytes("RGB", (64, 64), os.urandom(64 * 64 * 3))
     buf = io.BytesIO()
     img.save(buf, format="TIFF")
     tiff_data = buf.getvalue()
@@ -68,11 +64,7 @@ def generate_tiff(target_size: int) -> bytes:
 def generate_jpg(target_size: int) -> bytes:
     from PIL import Image
 
-    img = Image.new("RGB", (64, 64), color=(
-        random.randint(0, 255),
-        random.randint(0, 255),
-        random.randint(0, 255),
-    ))
+    img = Image.frombytes("RGB", (64, 64), os.urandom(64 * 64 * 3))
     buf = io.BytesIO()
     img.save(buf, format="JPEG", quality=85)
     jpg_data = buf.getvalue()
