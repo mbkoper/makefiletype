@@ -178,6 +178,32 @@ def _random_printable_bytes(length: int) -> bytes:
     return bytes(random.choices(chars, k=length))
 
 
+def parse_size(value: str) -> int:
+    """Parse a size string with optional suffix into bytes.
+
+    Supported suffixes (case-insensitive): k/K (kibibytes), m/M (mebibytes),
+    g/G (gibibytes). A bare integer is treated as bytes.
+
+    Examples: '100k', '100K', '1m', '1g', '1024'
+    """
+    value = value.strip()
+    suffixes = {"k": 1024, "m": 1024 ** 2, "g": 1024 ** 3}
+    if value and value[-1].lower() in suffixes:
+        multiplier = suffixes[value[-1].lower()]
+        number_part = value[:-1]
+    else:
+        multiplier = 1
+        number_part = value
+    try:
+        return int(number_part) * multiplier
+    except ValueError:
+        raise argparse.ArgumentTypeError(
+            f"Invalid size '{value}'. Use an integer optionally followed by "
+            "k/K (kibibytes), m/M (mebibytes), or g/G (gibibytes). "
+            "Examples: 1024, 100k, 5m, 1g"
+        )
+
+
 def _format_size(n: int) -> str:
     """Return a compact size label: e.g. 5120 → '5k', 5242880 → '5m', 999 → '999'."""
     if n >= 1024 * 1024 and n % (1024 * 1024) == 0:
@@ -210,8 +236,12 @@ def main():
     parser.add_argument(
         "--size", "-s",
         required=True,
-        type=int,
-        help="Desired file size in bytes.",
+        type=parse_size,
+        help=(
+            "Desired file size. Accepts a plain integer (bytes) or an integer "
+            "with a suffix: k/K (kibibytes), m/M (mebibytes), g/G (gibibytes). "
+            "Examples: 1024, 100k, 5m, 1g"
+        ),
     )
     parser.add_argument(
         "--output", "-o",
