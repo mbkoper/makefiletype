@@ -102,14 +102,6 @@ def build_soap_body(
     return soap_body
 
 
-def extract_doc_id(response_text: str) -> str | None:
-    """Extract the document ID from a successful SOAP response."""
-    match = re.search(
-        r"<(?:[^:>]+:)?(?:documentId|docId|id|documentIdentifier|registratieKenmerk|kenmerk)[^>]*>([^<]+)<",
-        response_text,
-    )
-    return match.group(1).strip() if match else None
-
 
 def send_soap_request(
     filename: str,
@@ -189,7 +181,11 @@ def send_soap_request(
         raise RuntimeError(f"SOAP request failed: {e}") from e
 
     print(f"Status: {response.status_code}")
-    return extract_doc_id(response.text)
+    match = re.search(
+        r"<(?:[^:>]+:)?(?:documentId|docId|id|documentIdentifier|registratieKenmerk|kenmerk)[^>]*>([^<]+)<",
+        response.text,
+    )
+    return match.group(1).strip() if match else None
 
 
 if __name__ == "__main__":

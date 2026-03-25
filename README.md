@@ -74,9 +74,9 @@ python soap_request.py 250k.pdf AA D I CP N P01
 **Importable API**
 
 ```python
-from soap_request import send_soap_request, extract_doc_id
+from soap_request import send_soap_request
 
-response = send_soap_request(
+doc_id = send_soap_request(
     filename="250k.pdf",
     file_path="/path/to/250k.pdf",   # optional, defaults to test-files/<filename>
     wetscluster="AA",
@@ -86,8 +86,6 @@ response = send_soap_request(
     taalcodes="N",
     regeling="P01",
 )
-
-doc_id = extract_doc_id(response.text)
 ```
 
 ---
