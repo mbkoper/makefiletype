@@ -23,6 +23,7 @@ MIMETYPE_MAP = {
 def build_soap_body(file_path, mimetype, doc_name, wetscluster="VV", mediumkanaal="P", richting="I", scanlocatie="ZS", taalcodes="N", regeling="BB80"):
     username = os.getenv("SOAP_USERNAME")
     password = os.getenv("SOAP_PASSWORD")
+    print(f"DEBUG build_soap_body: file_path={file_path}, mimetype={mimetype}, doc_name={doc_name}, wetscluster={wetscluster}, mediumkanaal={mediumkanaal}, richting={richting}, scanlocatie={scanlocatie}, taalcodes={taalcodes}, regeling={regeling}")
 
     with open(file_path, "rb") as f:
         content_b64 = base64.b64encode(f.read()).decode("utf-8")
