@@ -20,19 +20,12 @@ MIMETYPE_MAP = {
 }
 
 
-def build_soap_body(file_path, mimetype, doc_name, **kwargs):
+def build_soap_body(file_path, mimetype, doc_name, wetscluster="VV", mediumkanaal="P", richting="I", scanlocatie="ZS", taalcodes="N", regeling="BB80"):
     username = os.getenv("SOAP_USERNAME")
     password = os.getenv("SOAP_PASSWORD")
 
     with open(file_path, "rb") as f:
         content_b64 = base64.b64encode(f.read()).decode("utf-8")
-
-    wetscluster = kwargs.get("wetscluster", "VV")
-    mediumkanaal = kwargs.get("mediumkanaal", "P")
-    richting = kwargs.get("richting", "I")
-    scanlocatie = kwargs.get("scanlocatie", "ZS")
-    taalcodes = kwargs.get("taalcodes", "N")
-    regeling = kwargs.get("regeling", "BB80")
 
     soap_body = f"""<soapenv:Envelope xmlns:dos="http://www.svb.nl/DossiersService/" xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/">
 <soapenv:Header>
@@ -76,14 +69,14 @@ def build_soap_body(file_path, mimetype, doc_name, **kwargs):
     return soap_body
 
 
-def send_soap_request(filename, **kwargs):
+def send_soap_request(filename, wetscluster="VV", mediumkanaal="P", richting="I", scanlocatie="ZS", taalcodes="N", regeling="BB80"):
     basename = os.path.basename(filename)
-    file_path = kwargs.get("file_path") or os.path.join("test-files", basename)
+    file_path = os.path.join("test-files", basename)
     name_only, _ = os.path.splitext(basename)
 
     mimetype = MIMETYPE_MAP.get(name_only.lower()) or mimetypes.guess_type(filename)[0] or "application/octet-stream"
 
-    soap_body = build_soap_body(file_path, mimetype, name_only, **kwargs)
+    soap_body = build_soap_body(file_path, mimetype, name_only, wetscluster, mediumkanaal, richting, scanlocatie, taalcodes, regeling)
 
     url = "https://dms-dossier-service-dms-tst.apps.ocp-dta.esp.svb.org/generic/dossiers"
     response = requests.post(url, data=soap_body.encode("utf-8"), headers={"Content-Type": "text/xml; charset=utf-8"}, timeout=120)
@@ -96,7 +89,4 @@ if __name__ == "__main__":
     if len(sys.argv) < 2:
         sys.exit("Usage: python soap_request.py <filename> [wetscluster] [mediumkanaal] [richting] [scanlocatie] [taalcodes] [regeling]")
 
-    keys = ["wetscluster", "mediumkanaal", "richting", "scanlocatie", "taalcodes", "regeling"]
-    args = dict(zip(keys, sys.argv[2:]))
-
-    print(send_soap_request(sys.argv[1], **args))
+    print(send_soap_request(*sys.argv[1:]))
