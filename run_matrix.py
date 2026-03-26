@@ -9,15 +9,6 @@ from soap_request import send_soap_request
 
 CSV_FILE = os.path.join(os.path.dirname(__file__), "matrix.csv")
 
-TYPE_MAP = {
-    "pdf":  ("pdf",  ".pdf"),
-    "tiff": ("tiff", ".tiff"),
-    "jpeg": ("jpg",  ".jpg"),
-    "text": ("txt",  ".txt"),
-    "html": ("html", ".html"),
-    "xml":  ("xml",  ".xml"),
-}
-
 with open(CSV_FILE, newline="", encoding="utf-8-sig") as f:
     for row in csv.DictReader(f):
         wetscluster  = row["Wetscluster"]
@@ -29,7 +20,8 @@ with open(CSV_FILE, newline="", encoding="utf-8-sig") as f:
         regeling     = row["Regeling"]
         grootte      = row["Grootte"]
 
-        gen_key, ext = TYPE_MAP[mimetype]
+        gen_key = "jpg" if mimetype == "jpeg" else mimetype
+        ext = "." + gen_key
         data = GENERATORS[gen_key](parse_size(grootte))
 
         with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:
@@ -37,6 +29,7 @@ with open(CSV_FILE, newline="", encoding="utf-8-sig") as f:
             tmp_path = tmp.name
 
         try:
+            print(f"[DEBUG] send_soap_request(filename={os.path.basename(tmp_path)!r}, wetscluster={wetscluster!r}, mediumkanaal={mediumkanaal!r}, richting={richting!r}, scanlocatie={scanlocatie!r}, taalcodes={taalcodes!r}, regeling={regeling!r}, file_path={tmp_path!r})")
             doc_id = send_soap_request(
                 filename=os.path.basename(tmp_path),
                 wetscluster=wetscluster,
