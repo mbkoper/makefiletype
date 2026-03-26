@@ -2,9 +2,7 @@
 
 import csv
 import os
-import tempfile
 
-from makefiletype import GENERATORS, parse_size
 from soap_request import send_soap_request
 
 CSV_FILE = os.path.join(os.path.dirname(__file__), "matrix.csv")
@@ -20,29 +18,17 @@ with open(CSV_FILE, newline="", encoding="utf-8-sig") as f:
         regeling     = row["Regeling"]
         grootte      = row["Grootte"]
 
-        gen_key = "jpg" if mimetype == "jpeg" else mimetype
-        ext = "." + gen_key
-        data = GENERATORS[gen_key](parse_size(grootte))
-
+        ext = ".jpg" if mimetype == "jpeg" else "." + mimetype
         filename = grootte + ext
 
-        with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:
-            tmp.write(data)
-            tmp_path = tmp.name
-
-        try:
-            print(f"[DEBUG] send_soap_request(filename={filename!r}, wetscluster={wetscluster!r}, mediumkanaal={mediumkanaal!r}, richting={richting!r}, scanlocatie={scanlocatie!r}, taalcodes={taalcodes!r}, regeling={regeling!r}, file_path={tmp_path!r})")
-            doc_id = send_soap_request(
-                filename=filename,
-                wetscluster=wetscluster,
-                mediumkanaal=mediumkanaal,
-                richting=richting,
-                scanlocatie=scanlocatie,
-                taalcodes=taalcodes,
-                regeling=regeling,
-                file_path=tmp_path,
-            )
-            print(f"{wetscluster},{mediumkanaal},{mimetype}: doc_id={doc_id}")
-        finally:
-            os.unlink(tmp_path)
+        doc_id = send_soap_request(
+            filename=filename,
+            wetscluster=wetscluster,
+            mediumkanaal=mediumkanaal,
+            richting=richting,
+            scanlocatie=scanlocatie,
+            taalcodes=taalcodes,
+            regeling=regeling,
+        )
+        print(f"{wetscluster},{mediumkanaal},{mimetype}: doc_id={doc_id}")
 
