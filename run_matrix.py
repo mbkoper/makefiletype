@@ -24,14 +24,16 @@ with open(CSV_FILE, newline="", encoding="utf-8-sig") as f:
         ext = "." + gen_key
         data = GENERATORS[gen_key](parse_size(grootte))
 
+        filename = grootte + ext
+
         with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:
             tmp.write(data)
             tmp_path = tmp.name
 
         try:
-            print(f"[DEBUG] send_soap_request(filename={os.path.basename(tmp_path)!r}, wetscluster={wetscluster!r}, mediumkanaal={mediumkanaal!r}, richting={richting!r}, scanlocatie={scanlocatie!r}, taalcodes={taalcodes!r}, regeling={regeling!r}, file_path={tmp_path!r})")
+            print(f"[DEBUG] send_soap_request(filename={filename!r}, wetscluster={wetscluster!r}, mediumkanaal={mediumkanaal!r}, richting={richting!r}, scanlocatie={scanlocatie!r}, taalcodes={taalcodes!r}, regeling={regeling!r}, file_path={tmp_path!r})")
             doc_id = send_soap_request(
-                filename=os.path.basename(tmp_path),
+                filename=filename,
                 wetscluster=wetscluster,
                 mediumkanaal=mediumkanaal,
                 richting=richting,
