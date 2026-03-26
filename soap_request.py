@@ -82,7 +82,10 @@ def send_soap_request(filename, wetscluster="VV", mediumkanaal="P", richting="I"
     response = requests.post(url, data=soap_body.encode("utf-8"), headers={"Content-Type": "text/xml; charset=utf-8"}, timeout=120)
 
     match = re.search(r"<(?:[^:>]+:)?(?:documentID|registratieKenmerk)[^>]*>([^<]+)<", response.text, re.I)
-    return match.group(1).strip() if match else None
+    doc_id = match.group(1).strip() if match else None
+    if doc_id is None:
+        print(f"DEBUG: SOAP response (status {response.status_code}):\n{response.text}")
+    return doc_id
 
 
 if __name__ == "__main__":
