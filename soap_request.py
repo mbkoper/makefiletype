@@ -69,9 +69,10 @@ def build_soap_body(file_path, mimetype, doc_name, wetscluster="VV", mediumkanaa
     return soap_body
 
 
-def send_soap_request(filename, wetscluster="VV", mediumkanaal="P", richting="I", scanlocatie="ZS", taalcodes="N", regeling="BB80"):
+def send_soap_request(filename, wetscluster="VV", mediumkanaal="P", richting="I", scanlocatie="ZS", taalcodes="N", regeling="BB80", file_path=None):
     basename = os.path.basename(filename)
-    file_path = os.path.join("test-files", basename)
+    if file_path is None:
+        file_path = os.path.join("test-files", basename)
     name_only, _ = os.path.splitext(basename)
 
     mimetype = MIMETYPE_MAP.get(name_only.lower()) or mimetypes.guess_type(filename)[0] or "application/octet-stream"
