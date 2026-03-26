@@ -23,6 +23,7 @@ MIMETYPE_MAP = {
 def build_soap_body(file_path, mimetype, doc_name, wetscluster="VV", mediumkanaal="P", richting="I", scanlocatie="ZS", taalcodes="N", regeling="BB80"):
     username = os.getenv("SOAP_USERNAME")
     password = os.getenv("SOAP_PASSWORD")
+    print(f"DEBUG build_soap_body: file_path={file_path}, mimetype={mimetype}, doc_name={doc_name}, wetscluster={wetscluster}, mediumkanaal={mediumkanaal}, richting={richting}, scanlocatie={scanlocatie}, taalcodes={taalcodes}, regeling={regeling}")
 
     with open(file_path, "rb") as f:
         content_b64 = base64.b64encode(f.read()).decode("utf-8")
@@ -82,7 +83,10 @@ def send_soap_request(filename, wetscluster="VV", mediumkanaal="P", richting="I"
     response = requests.post(url, data=soap_body.encode("utf-8"), headers={"Content-Type": "text/xml; charset=utf-8"}, timeout=120)
 
     match = re.search(r"<(?:[^:>]+:)?(?:documentID|registratieKenmerk)[^>]*>([^<]+)<", response.text, re.I)
-    return match.group(1).strip() if match else None
+    doc_id = match.group(1).strip() if match else None
+    if doc_id is None:
+        print(f"DEBUG: SOAP response (status {response.status_code}):\n{response.text}")
+    return doc_id
 
 
 if __name__ == "__main__":
